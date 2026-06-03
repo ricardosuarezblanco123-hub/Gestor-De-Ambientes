@@ -5,85 +5,110 @@
 {% block content %}
 <div class="container py-4">
     <!-- Botón para regresar y Migas de Pan -->
-    <div class="mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="{% url 'index' %}" class="text-success fw-bold text-decoration-none">Inicio</a></li>
-                <li class="breadcrumb-item active">Reserva</li>
-            </ol>
-        </nav>
-        <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 shadow-sm">
-            <i class="bi bi-arrow-left"></i> Volver
-        </a>
-    </div>
-
-<div class="row justify-content-center py-5">
-    <div class="col-md-6 col-lg-5">
-        <div class="card border-0 shadow p-4" style="border-radius: 20px;">
+    <div class="row justify-content-center pb-5">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-lg p-4" style="border-radius: 25px; transition: transform 0.3s ease;">
             <!-- Encabezado del Formulario -->
             <div class="text-center mb-4">
-                <h2 class="fw-bold text-dark">Nueva Reserva</h2>
-                <span class="badge bg-success px-3 py-2 fs-6">Ambiente: {{ ambiente }} {% if booking %}(Editando){% endif %}</span>
+                <h2 class="fw-bold text-dark mb-1">{% if booking.id %}Editar{% else %}Nueva{% endif %} Reserva</h2>
+                <p class="text-muted small mb-3">Complete los detalles para asegurar el espacio de formación</p>
+                <div class="d-inline-flex align-items-center gap-2 bg-success bg-opacity-10 text-success px-4 py-2 rounded-pill border border-success border-opacity-25">
+                    <i class="bi bi-door-closed-fill"></i>
+                    <span class="fw-bold">Ambiente: {{ ambiente }}</span>
+                </div>
             </div>
 
             <form method="POST">
                 {% csrf_token %}
                 
-                <!-- Campo: Nombre del Instructor -->
-                <div class="mb-3">
-                    <label for="instructor" class="form-label fw-semibold">Nombre del Instructor</label>
-                    <!-- Usamos list="instructoresList" para habilitar las sugerencias automáticas -->
-                    <input type="text" name="instructor" id="instructor" class="form-control" placeholder="Nombre completo" value="{{ booking.instructor|default_if_none:'' }}" list="instructoresList" required autocomplete="off">
-                    <datalist id="instructoresList">
-                        {% for inst in instructores %}
-                            <option value="{{ inst.nombre }}">
-                        {% endfor %}
-                    </datalist>
-                </div>
+                <div class="row g-4">
+                    <!-- Campo: Selección de Instructor (Listado Completo) -->
+                    <div class="col-12">
+                        <label for="instructor" class="form-label fw-bold text-secondary small text-uppercase">Instructor Responsable</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-person-vcard"></i></span>
+                            <select name="instructor" id="instructor" class="form-select border-start-0 ps-0" required>
+                                <option value="" disabled {% if not booking %}selected{% endif %}>Elija un instructor del listado...</option>
+                                {% for inst in instructores %}
+                                    <option value="{{ inst.nombre }}" 
+                                        {% if booking.instructor.id == inst.id or booking.instructor == inst.nombre %}selected{% endif %}>
+                                        {{ inst.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
 
-                <!-- Campo: Qué instruye (Materia) -->
-                <div class="mb-3">
-                    <label for="materia" class="form-label fw-semibold">Lo que instruye (Materia/Programa)</label>
-                    <input type="text" name="materia" id="materia" class="form-control" placeholder="Ej: Programación de Software" value="{{ booking.instructor.materia|default_if_none:'' }}" required>
-                </div>
+                    <!-- Campo: Materia o Programa -->
+                    <div class="col-12">
+                        <label for="materia" class="form-label fw-bold text-secondary small text-uppercase">Materia o Programa</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-journal-bookmark"></i></span>
+                            <input type="text" name="materia" id="materia" class="form-control border-start-0 ps-0" placeholder="Ej: Análisis y Desarrollo de Software" value="{% if booking.materia %}{{ booking.materia }}{% elif booking.instructor.materia %}{{ booking.instructor.materia }}{% endif %}" required>
+                        </div>
+                    </div>
+
+                    <div class="col-12"><hr class="my-2 text-muted opacity-25"></div>
 
                 <!-- Campos: Fecha de Inicio y Fin -->
-                <div class="row">
-                    <div class="col-6 mb-3">
-                        <label for="fecha_inicio" class="form-label fw-semibold">Fecha Inicio</label>
+                    <div class="col-md-6">
+                        <label for="fecha_inicio" class="form-label fw-bold text-secondary small text-uppercase">Fecha Inicio</label>
                         <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ booking.fecha_inicio|default_if_none:'' }}" required>
                     </div>
-                    <div class="col-6 mb-3">
-                        <label for="fecha_fin" class="form-label fw-semibold">Fecha Fin</label>
+                    <div class="col-md-6">
+                        <label for="fecha_fin" class="form-label fw-bold text-secondary small text-uppercase">Fecha Fin</label>
                         <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ booking.fecha_fin|default_if_none:'' }}" required>
                     </div>
-                </div>
 
                 <!-- Campos: Horario de Inicio y Fin -->
-                <div class="row">
-                    <div class="col-6 mb-3">
-                        <label for="hora_inicio" class="form-label fw-semibold">Hora de Inicio</label>
+                    <div class="col-md-6">
+                        <label for="hora_inicio" class="form-label fw-bold text-secondary small text-uppercase">Hora de Inicio</label>
                         <input type="time" name="hora_inicio" id="hora_inicio" class="form-control" value="{{ booking.hora_inicio|default_if_none:'' }}" required>
                     </div>
-                    <div class="col-6 mb-3">
-                        <label for="hora_fin" class="form-label fw-semibold">Hora de Fin</label>
+                    <div class="col-md-6">
+                        <label for="hora_fin" class="form-label fw-bold text-secondary small text-uppercase">Hora de Fin</label>
                         <input type="time" name="hora_fin" id="hora_fin" class="form-control" value="{{ booking.hora_fin|default_if_none:'' }}" required>
                     </div>
                 </div>
 
                 <!-- Botones de Acción -->
-                <div class="d-grid gap-2 mt-4">
-                    <button type="submit" class="btn btn-sena py-2 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
-                        <i class="bi bi-check2-circle fs-5"></i>
-                        Confirmar Reserva
+                <div class="col-12 d-grid gap-2 mt-2">
+                    <button type="submit" class="btn btn-sena py-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" style="border-radius: 15px;">
+                        <i class="bi bi-calendar-check-fill fs-5"></i>
+                        {% if booking.id %}Guardar Cambios{% else %}Confirmar Reserva{% endif %}
                     </button>
-                    <a href="{% url 'index' %}" class="btn btn-light text-muted small">Cancelar y volver</a>
+                    <a href="javascript:history.back()" class="btn btn-link text-decoration-none text-muted small">Cancelar y volver</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
 </div>
+
+<style>
+    .form-control, .form-select, .input-group-text {
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        border-color: #e0e0e0;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #39A900;
+        box-shadow: 0 0 0 0.25rem rgba(57, 169, 0, 0.15);
+    }
+    .input-group-text {
+        border-radius: 12px 0 0 12px;
+    }
+    .form-control.border-start-0, .form-select.border-start-0 {
+        border-radius: 0 12px 12px 0;
+    }
+    .card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 <!-- Incluimos iconos de Bootstrap para el detalle -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 {% endblock %}

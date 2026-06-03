@@ -49,7 +49,7 @@ def login_view(request):
 
             if password_correct:
                 # 4. Iniciar sesión manual
-                request.session['user_id'] = user_record.id
+                request.session['user_id'] = int(user_record.id)
                 request.session['username'] = user_record.username
                 request.session.modified = True  # Forzamos el guardado de la sesión
                 request.session.save() # Guardar explícitamente la sesión
@@ -133,7 +133,7 @@ def custom_register_view(request):
             new_user = custom_user.objects.create(
                 username=username_val,
                 password=make_password(password_val),
-                role_id=role_obj,
+                role=role_obj,
                 is_active=True
             )
             

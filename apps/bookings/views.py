@@ -6,6 +6,8 @@ from apps.directory.models import Instructor
 
 # Función auxiliar para determinar la jornada según la hora de inicio
 def obtener_jornada(hora_str):
+    if not hora_str or ':' not in hora_str:
+        return "DÍA"
     hora = int(hora_str.split(':')[0])
     if 6 <= hora < 12:
         return "DÍA"
@@ -21,10 +23,9 @@ def booking_list(request):
         return redirect('login')
 
     # Filtramos usando el ORM de Django
-    mis_reservas = Reserva.objects.filter(user_id=user_id).order_by('-fecha_inicio')
+    mis_reservas = Reserva.objects.filter(user_id=user_id).select_related('ambiente', 'instructor').order_by('-fecha_inicio')
     context = {
         'reservations': mis_reservas,
-        'titulo_pagina': 'Mis Reservas Personales'
     }
     return render(request, 'booking_list.html', context)
 
@@ -33,7 +34,7 @@ def environment_bookings(request, ambiente_name):
         return redirect('login')
 
     # Filtramos por el nombre del ambiente relacionado
-    reservas_ambiente = Reserva.objects.filter(ambiente__nombre=ambiente_name)
+    reservas_ambiente = Reserva.objects.filter(ambiente__nombre=ambiente_name).select_related('instructor', 'ambiente')
     context = {
         'ambiente': ambiente_name,
         'reservations': reservas_ambiente,
@@ -47,17 +48,21 @@ def reserve_view(request, ambiente_name):
         return redirect('login')
 
     if request.method == "POST":
-        instructor = request.POST.get('instructor').upper()
-        materia = request.POST.get('materia').upper()
-        inicio = request.POST.get('hora_inicio')
-        fin = request.POST.get('hora_fin')
-        fecha_inicio = request.POST.get('fecha_inicio')
-        fecha_fin = request.POST.get('fecha_fin')
+        instructor = request.POST.get('instructor', '').strip().upper()
+        materia = request.POST.get('materia', '').strip().upper()
+        inicio = request.POST.get('hora_inicio', '')
+        fin = request.POST.get('hora_fin', '')
+        fecha_inicio = request.POST.get('fecha_inicio', '')
+        fecha_fin = request.POST.get('fecha_fin', '')
 
-        # Validación: Hora de fin debe ser mayor a inicio
-        if inicio >= fin:
-            messages.error(request, "La hora de fin debe ser posterior a la hora de inicio.")
-            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST})
+        # Validación de integridad: La reserva debe tener una duración positiva
+        if not inicio or not fin:
+            messages.error(request, "Los campos de hora son obligatorios.")
+            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all()})
+
+        if inicio <= fin:
+            messages.error(request, "Error: La hora de inicio debe ser menor a la hora de fin.")
+            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all()})
 
         # Obtener o crear instructor en el directorio y capturar el objeto
         instructor_obj, _ = Instructor.objects.get_or_create(nombre=instructor, defaults={'materia': materia})
@@ -75,13 +80,15 @@ def reserve_view(request, ambiente_name):
         ).exists()
 
         if solapada:
+            print(f"DEBUG: Reserva solapada detectada para el ambiente {ambiente_name}")
             messages.error(request, "El ambiente ya está ocupado en ese horario.")
-            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST})
+            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all()})
 
         # Guardar en la base de datos
         Reserva.objects.create(
             ambiente=ambiente_obj,
             instructor=instructor_obj,
+            materia=materia,
             hora_inicio=inicio,
             hora_fin=fin,
             fecha_inicio=fecha_inicio,
@@ -89,7 +96,8 @@ def reserve_view(request, ambiente_name):
             user_id=user_id,
             jornada=obtener_jornada(inicio)
         )
-
+        
+        print(f"DEBUG: Reserva guardada exitosamente para {instructor}")
         messages.success(request, f"Reserva exitosa para {ambiente_name} por {instructor}.")
         return redirect('booking_list')
         
@@ -122,18 +130,45 @@ def edit_booking(request, booking_id):
         return redirect('booking_list')
 
     if request.method == "POST":
-        instructor_nombre = request.POST.get('instructor').upper()
-        materia_nombre = request.POST.get('materia').upper()
+        instructor_nombre = request.POST.get('instructor', '').strip().upper()
+        materia_nombre = request.POST.get('materia', '').strip().upper()
+        inicio = request.POST.get('hora_inicio', '')
+        fin = request.POST.get('hora_fin', '')
+        fecha_inicio = request.POST.get('fecha_inicio', '')
+        fecha_fin = request.POST.get('fecha_fin', '')
+
+        # Asegurar que los datos de tiempo existan antes de comparar
+        if not inicio or not fin:
+            messages.error(request, "Debe especificar horas válidas para la reserva.")
+            return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': reserva, 'instructores': Instructor.objects.all()})
+
+        if inicio >= fin:
+            messages.error(request, "Error: El horario ingresado no es válido (inicio >= fin).")
+            return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': reserva, 'instructores': Instructor.objects.all()})
+
+        # Validación de solapamiento (excluyendo la reserva que estamos editando)
+        solapada = Reserva.objects.filter(
+            ambiente=reserva.ambiente,
+            fecha_inicio__lte=fecha_fin,
+            fecha_fin__gte=fecha_inicio,
+            hora_inicio__lt=fin,
+            hora_fin__gt=inicio
+        ).exclude(id=reserva.id).exists()
+
+        if solapada:
+            messages.error(request, "El ambiente ya está ocupado en ese horario.")
+            return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': reserva, 'instructores': Instructor.objects.all()})
         
         # Sincronizar con la tabla de instructores para que siempre quede el registro
         instructor_obj, _ = Instructor.objects.get_or_create(nombre=instructor_nombre, defaults={'materia': materia_nombre})
         
         reserva.instructor = instructor_obj
-        reserva.hora_inicio = request.POST.get('hora_inicio')
-        reserva.hora_fin = request.POST.get('hora_fin')
-        reserva.fecha_inicio = request.POST.get('fecha_inicio')
-        reserva.fecha_fin = request.POST.get('fecha_fin')
-        reserva.jornada = obtener_jornada(reserva.hora_inicio)
+        reserva.materia = materia_nombre
+        reserva.hora_inicio = inicio
+        reserva.hora_fin = fin
+        reserva.fecha_inicio = fecha_inicio
+        reserva.fecha_fin = fecha_fin
+        reserva.jornada = obtener_jornada(inicio)
         reserva.save()
 
         messages.success(request, "Reserva actualizada exitosamente.")
