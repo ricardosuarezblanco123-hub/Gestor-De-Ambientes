@@ -139,3 +139,13 @@ MESSAGE_TAGS = {
     message_constants.WARNING: 'warning',
     message_constants.ERROR: 'danger',
 }
+
+# Configuración para envío de correos reales (Ejemplo con Gmail)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+# Tu correo de Gmail
+EMAIL_HOST_USER = 'ricardosuarezblanco123@gmail.com'
+# Contraseña de aplicación de 16 letras generada en tu cuenta de Google
+EMAIL_HOST_PASSWORD = 'lhtbtoyveiovjdfb'

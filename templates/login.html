@@ -1,41 +1,62 @@
 {% extends 'base.html' %}
 
-{% block title %}Iniciar Sesión | SENA{% endblock %}
+{% block title %}Iniciar Sesión | Gestor de Ambientes{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="col-md-5 col-lg-4">
-        <div class="card border-0 shadow-lg p-4" style="border-radius: 25px;">
-            <div class="text-center mb-4">
-                <!-- Logo del SENA -->
-                <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Sena_Colombia_logo.svg" alt="SENA Logo" style="width: 80px;" class="mb-3 sena-filter">
-                <h2 class="fw-bold">Bienvenido</h2>
-                <p class="text-muted small text-uppercase fw-semibold" style="letter-spacing: 1px;">Gestor de Ambientes</p>
-            </div>
-
-            <form method="POST">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label for="username" class="form-label fw-bold small text-uppercase text-secondary">Usuario</label>
-                    <input type="text" name="username" id="username" class="form-control" placeholder="Ingrese su usuario" required autofocus>
-                </div>
-                <div class="mb-4">
-                    <label for="password" class="form-label fw-bold small text-uppercase text-secondary">Contraseña</label>
-                    <input type="password" name="password" id="password" class="form-control" placeholder="Ingrese su contraseña" required>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-lg p-4" style="border-radius: 25px;">
+                <div class="text-center mb-4">
+                    <!-- Logo del SENA -->
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Sena_Colombia_logo.svg" 
+                         alt="Logo SENA" class="img-fluid mb-3" style="max-height: 100px;">
+                    <h2 class="fw-bold text-dark">Bienvenido</h2>
+                    <p class="text-muted small">Ingresa tus credenciales para continuar</p>
                 </div>
 
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-sena py-2 fw-bold shadow-sm">
-                        <i class="bi bi-box-arrow-in-right me-2"></i>Ingresar al Sistema
-                    </button>
-                </div>
-            </form>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.GET.next }}">
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label fw-bold text-secondary small text-uppercase">Usuario</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-person"></i></span>
+                            <input type="text" name="username" id="username" class="form-control border-start-0 ps-0" placeholder="Nombre de usuario" required>
+                        </div>
+                    </div>
 
-            <div class="text-center mt-4">
-                <p class="mb-0 text-muted small">¿No tienes una cuenta registrada?</p>
-                <a href="{% url 'register' %}" class="text-success fw-bold text-decoration-none small">Crea una cuenta aquí</a>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between">
+                            <label for="password" class="form-label fw-bold text-secondary small text-uppercase">Contraseña</label>
+                            <!-- ENLACE PARA RECUPERAR CONTRASEÑA -->
+                            <a href="{% url 'recover_password' %}" class="text-success small text-decoration-none fw-bold">¿La olvidaste?</a>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-lock"></i></span>
+                            <input type="password" name="password" id="password" class="form-control border-start-0 ps-0" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-sena py-3 fw-bold shadow-sm" style="border-radius: 15px;">
+                            Entrar al Sistema
+                        </button>
+                        <p class="text-center mt-3 small text-muted">
+                            ¿No tienes cuenta? <a href="{% url 'custom_register' %}" class="text-success fw-bold text-decoration-none">Regístrate aquí</a>
+                        </p>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .form-control, .input-group-text {
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+    }
+</style>
 {% endblock %}

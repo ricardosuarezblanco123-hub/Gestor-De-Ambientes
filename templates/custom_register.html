@@ -1,53 +1,64 @@
 {% extends 'base.html' %}
 
-{% block title %}Registro Manual | SENA{% endblock %}
+{% block title %}Registro | Gestor de Ambientes{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center align-items-center py-5" style="min-height: 80vh;">
-    <div class="col-md-6 col-lg-5">
-        <div class="card border-0 shadow-lg p-5" style="border-radius: 25px;">
-            <div class="text-center mb-4">
-                <div class="bg-primary bg-opacity-10 d-inline-block p-4 rounded-circle mb-3">
-                    <i class="bi bi-person-vcard text-primary" style="font-size: 3rem;"></i>
-                </div>
-                <h2 class="fw-bold">Registro Manual</h2>
-                <p class="text-muted small">Carga directa a la base de datos de cuentas personalizadas</p>
-            </div>
-            
-            <!-- Formulario manual sin Django Forms -->
-            <form method="POST">
-                {% csrf_token %}
-                <div class="mb-4">
-                    <label class="form-label fw-bold small text-uppercase text-secondary">Nombre de Usuario</label>
-                    <input type="text" name="username" class="form-control" placeholder="Ingrese nombre de usuario" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="form-label fw-bold small text-uppercase text-secondary">Contraseña</label>
-                    <input type="password" name="password" class="form-control" placeholder="Ingrese contraseña" required>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-lg p-4" style="border-radius: 25px;">
+                <div class="text-center mb-4">
+                    <div class="bg-success bg-opacity-10 d-inline-block p-3 rounded-circle mb-3">
+                        <i class="bi bi-person-plus-fill text-success fs-1"></i>
+                    </div>
+                    <h2 class="fw-bold text-dark">Crear Cuenta</h2>
+                    <p class="text-muted small">Únete al sistema de gestión de ambientes</p>
                 </div>
 
-                <div class="mb-4">
-                    <label class="form-label fw-bold small text-uppercase text-secondary">Rol Asignado</label>
-                    <select name="role_id" class="form-select">
-                        <option value="">Seleccione un rol...</option>
-                        {% for r in roles %}
-                        <option value="{{ r.id }}">{{ r.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">Este registro afecta exclusivamente a la tabla personalizada de cuentas.</div>
-                </div>
-                
-                <div class="d-grid gap-3">
-                    <button type="submit" class="btn btn-primary py-3 fw-bold shadow-sm">
-                        <i class="bi bi-save me-2"></i>Guardar en Base de Datos
-                    </button>
-                    <a href="{% url 'profile' %}" class="btn btn-light text-muted fw-bold py-2">
-                        Cancelar y volver
-                    </a>
-                </div>
-            </form>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="username" class="form-label fw-bold text-secondary small text-uppercase">Usuario</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-person"></i></span>
+                            <input type="text" name="username" id="username" class="form-control border-start-0 ps-0" placeholder="Nombre de usuario" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-bold text-secondary small text-uppercase">Correo Electrónico</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-envelope"></i></span>
+                            <input type="email" name="email" id="email" class="form-control border-start-0 ps-0" placeholder="correo@ejemplo.com" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label fw-bold text-secondary small text-uppercase">Contraseña</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-lock"></i></span>
+                            <input type="password" name="password" id="password" class="form-control border-start-0 ps-0" placeholder="Mínimo 8 caracteres" required>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-sena py-3 fw-bold shadow-sm" style="border-radius: 15px;">
+                            Registrarse
+                        </button>
+                        <p class="text-center mt-3 small text-muted">
+                            ¿Ya tienes cuenta? <a href="{% url 'login' %}" class="text-success fw-bold text-decoration-none">Inicia sesión</a>
+                        </p>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+    .form-control, .input-group-text {
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+    }
+</style>
 {% endblock %}

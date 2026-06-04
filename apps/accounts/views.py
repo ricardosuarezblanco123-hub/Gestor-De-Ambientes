@@ -2,8 +2,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from .models import user as custom_user, role as account_role
 from django.contrib.auth.hashers import make_password, check_password
+from django.core.mail import send_mail
+from django.core.signing import Signer, BadSignature
 
 # Create your views here.
 
@@ -120,20 +123,15 @@ def custom_register_view(request):
     if request.method == "POST":
         username_val = request.POST.get('username')
         password_val = request.POST.get('password')
-        role_id_val = request.POST.get('role_id')
+        email_val = request.POST.get('email')
 
         if username_val and password_val:
-            # Buscamos el objeto Rol si se seleccionó uno
-            role_obj = None
-            if role_id_val:
-                role_obj = account_role.objects.filter(id=role_id_val).first()
-
             # Guardamos manualmente en la tabla personalizada 'accounts_user'
             # Usamos make_password para que la clave sea segura (formato de 128 caracteres)
             new_user = custom_user.objects.create(
                 username=username_val,
                 password=make_password(password_val),
-                role=role_obj,
+                email=email_val,
                 is_active=True
             )
             
@@ -147,5 +145,59 @@ def custom_register_view(request):
         else:
             messages.error(request, "El nombre de usuario y la contraseña son obligatorios.")
 
-    roles_list = account_role.objects.all()
-    return render(request, "custom_register.html", {"roles": roles_list})
+    return render(request, "custom_register.html")
+
+def recover_password_view(request):
+    if request.method == "POST":
+        email_input = request.POST.get('email', '').strip()
+        # Buscamos al usuario en la base de datos por el correo ingresado
+        user_record = custom_user.objects.filter(email__iexact=email_input).first()
+        
+        if user_record and user_record.email:
+            signer = Signer()
+            # Firmamos el ID para generar un token seguro y sin caracteres especiales
+            token = signer.sign(str(user_record.id))
+            
+            url_reset = reverse('reset_password', kwargs={'token': token})
+            full_url = request.build_absolute_uri(url_reset)
+
+            # Texto del correo sin tildes ni eñes para evitar fallos de codificacion ASCII en el servidor SMTP
+            asunto = 'Recuperacion de Acceso - Gestor de Ambientes'
+            safe_username = user_record.username.encode('ascii', 'ignore').decode('ascii')
+            mensaje = f'Hola {safe_username},\n\nHa solicitado restablecer su clave. Use el siguiente enlace: {full_url}'
+            
+            try:
+                # Usamos estrictamente el correo que esta en el registro de la DB
+                send_mail(asunto, mensaje, None, [user_record.email])
+                messages.success(request, f"Se ha enviado un enlace de recuperacion al correo: {user_record.email}")
+            except Exception:
+                messages.error(request, "Error de autenticacion (535). Revisa que la clave de 16 letras en settings.py sea correcta.")
+
+            return redirect('login')
+        messages.error(request, "No se encontro ningun usuario con ese correo o el usuario no tiene correo registrado.")
+    return render(request, "recover_password.html")
+
+def reset_password_view(request, token):
+    signer = Signer()
+    try:
+        user_id = signer.unsign(token)
+    except BadSignature:
+        messages.error(request, "El enlace de recuperación es inválido o ha expirado.")
+        return redirect('login')
+
+    if request.method == "POST":
+        new_password = request.POST.get('password', '').strip()
+        
+        if not new_password:
+            messages.error(request, "La nueva contraseña no puede estar vacía.")
+            return render(request, "reset_password.html", {'token': token})
+
+        user_record = get_object_or_404(custom_user, id=user_id)
+        # Encriptamos la nueva contraseña antes de guardarla en la base de datos
+        user_record.password = make_password(new_password)
+        # Guardamos exclusivamente el campo password para no afectar otros datos
+        user_record.save(update_fields=['password'])
+
+        messages.success(request, "Contraseña actualizada exitosamente.")
+        return redirect('login')
+    return render(request, "reset_password.html", {'token': token})

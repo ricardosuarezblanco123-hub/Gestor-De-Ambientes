@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from apps.accounts.views import login_view, logout_view, profile_view, custom_register_view, delete_user # Importa las vistas de cuentas
+from apps.accounts.views import login_view, logout_view, profile_view, custom_register_view, delete_user, recover_password_view, reset_password_view # Importa las vistas de cuentas
 from apps.bookings.views import booking_list, reserve_view, delete_booking, edit_booking, environment_bookings # Importa las vistas de reservas
 from apps.directory.views import directory_list
 from apps.infrastructure.views import environment_list, environment_detail, add_environment, delete_environment, edit_environment, add_sede, edit_sede
@@ -34,6 +34,8 @@ urlpatterns = [
     path('register/', custom_register_view, name='register'),
     path('custom-register/', custom_register_view, name='custom_register'),
     path('profile/', profile_view, name='profile'),
+    path('recover-password/', recover_password_view, name='recover_password'),
+    path('reset-password/<str:token>/', reset_password_view, name='reset_password'),
     path('accounts/delete/<int:user_id>/', delete_user, name='delete_user'),
     
     # Rutas para las funcionalidades del negocio (Reservas, Directorio, Ambientes)
