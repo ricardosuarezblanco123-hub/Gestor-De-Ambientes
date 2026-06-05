@@ -45,7 +45,7 @@
                 <tr>
                     <td>
                         <div class="fw-bold">{{ res.instructor }}</div>
-                        <small class="text-muted">Por: {{ res.user }}</small>
+                        <small class="text-muted">Por: {{ res.user.username }}</small>
                     </td>
                     <td>{{ res.materia }}</td>
                     <td>
@@ -55,7 +55,7 @@
                     <td>{{ res.hora_inicio }} - {{ res.hora_fin }}</td>
                     <td><span class="badge rounded-pill bg-info text-dark">{{ res.jornada }}</span></td>
                     <td>
-                        {% if user.username == res.user or user.is_superuser %}
+                        {% if request.session.username == res.user.username %}
                         <div class="d-flex gap-2">
                             <a href="{% url 'edit_booking' res.id %}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
                             <a href="{% url 'delete_booking' res.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar reserva?')" title="Eliminar"><i class="bi bi-trash"></i></a>

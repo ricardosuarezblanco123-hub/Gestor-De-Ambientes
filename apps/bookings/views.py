@@ -3,6 +3,7 @@ from django.contrib import messages
 from .models import Reserva
 from apps.infrastructure.models import Ambiente
 from apps.directory.models import Instructor
+from datetime import datetime
 
 # Función auxiliar para determinar la jornada según la hora de inicio
 def obtener_jornada(hora_str):
@@ -50,18 +51,26 @@ def reserve_view(request, ambiente_name):
     if request.method == "POST":
         instructor = request.POST.get('instructor', '').strip().upper()
         materia = request.POST.get('materia', '').strip().upper()
-        inicio = request.POST.get('hora_inicio', '')
-        fin = request.POST.get('hora_fin', '')
+        inicio_raw = request.POST.get('hora_inicio', '')
+        fin_raw = request.POST.get('hora_fin', '')
         fecha_inicio = request.POST.get('fecha_inicio', '')
         fecha_fin = request.POST.get('fecha_fin', '')
 
         # Validación de integridad: La reserva debe tener una duración positiva
-        if not inicio or not fin:
+        if not inicio_raw or not fin_raw:
             messages.error(request, "Los campos de hora son obligatorios.")
             return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all()})
 
-        if inicio <= fin:
-            messages.error(request, "Error: La hora de inicio debe ser menor a la hora de fin.")
+        # Convertimos a formato de 24 horas (militar) para comparaciones precisas
+        try:
+            inicio = datetime.strptime(inicio_raw, '%H:%M').time()
+            fin = datetime.strptime(fin_raw, '%H:%M').time()
+        except ValueError:
+            messages.error(request, "Formato de hora inválido.")
+            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all()})
+
+        if inicio >= fin:
+            messages.error(request, "Error: La hora de inicio debe ser anterior a la hora de fin (Formato 24h).")
             return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all()})
 
         # Obtener o crear instructor en el directorio y capturar el objeto
@@ -89,12 +98,12 @@ def reserve_view(request, ambiente_name):
             ambiente=ambiente_obj,
             instructor=instructor_obj,
             materia=materia,
-            hora_inicio=inicio,
+            hora_inicio=inicio, # Django ORM acepta objetos time para TimeField
             hora_fin=fin,
             fecha_inicio=fecha_inicio,
             fecha_fin=fecha_fin,
             user_id=user_id,
-            jornada=obtener_jornada(inicio)
+            jornada=obtener_jornada(inicio_raw)
         )
         
         print(f"DEBUG: Reserva guardada exitosamente para {instructor}")
@@ -132,18 +141,25 @@ def edit_booking(request, booking_id):
     if request.method == "POST":
         instructor_nombre = request.POST.get('instructor', '').strip().upper()
         materia_nombre = request.POST.get('materia', '').strip().upper()
-        inicio = request.POST.get('hora_inicio', '')
-        fin = request.POST.get('hora_fin', '')
+        inicio_raw = request.POST.get('hora_inicio', '')
+        fin_raw = request.POST.get('hora_fin', '')
         fecha_inicio = request.POST.get('fecha_inicio', '')
         fecha_fin = request.POST.get('fecha_fin', '')
 
         # Asegurar que los datos de tiempo existan antes de comparar
-        if not inicio or not fin:
+        if not inicio_raw or not fin_raw:
             messages.error(request, "Debe especificar horas válidas para la reserva.")
             return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': reserva, 'instructores': Instructor.objects.all()})
 
+        try:
+            inicio = datetime.strptime(inicio_raw, '%H:%M').time()
+            fin = datetime.strptime(fin_raw, '%H:%M').time()
+        except ValueError:
+            messages.error(request, "Formato de hora inválido.")
+            return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': reserva, 'instructores': Instructor.objects.all()})
+
         if inicio >= fin:
-            messages.error(request, "Error: El horario ingresado no es válido (inicio >= fin).")
+            messages.error(request, "Error: El horario de inicio debe ser anterior al de fin (Formato 24h).")
             return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': reserva, 'instructores': Instructor.objects.all()})
 
         # Validación de solapamiento (excluyendo la reserva que estamos editando)
@@ -168,7 +184,7 @@ def edit_booking(request, booking_id):
         reserva.hora_fin = fin
         reserva.fecha_inicio = fecha_inicio
         reserva.fecha_fin = fecha_fin
-        reserva.jornada = obtener_jornada(inicio)
+        reserva.jornada = obtener_jornada(inicio_raw)
         reserva.save()
 
         messages.success(request, "Reserva actualizada exitosamente.")

@@ -12,9 +12,15 @@
             <div class="text-center mb-4">
                 <h2 class="fw-bold text-dark mb-1">{% if booking.id %}Editar{% else %}Nueva{% endif %} Reserva</h2>
                 <p class="text-muted small mb-3">Complete los detalles para asegurar el espacio de formación</p>
-                <div class="d-inline-flex align-items-center gap-2 bg-success bg-opacity-10 text-success px-4 py-2 rounded-pill border border-success border-opacity-25">
-                    <i class="bi bi-door-closed-fill"></i>
-                    <span class="fw-bold">Ambiente: {{ ambiente }}</span>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <div class="d-inline-flex align-items-center gap-2 bg-success bg-opacity-10 text-success px-4 py-2 rounded-pill border border-success border-opacity-25">
+                        <i class="bi bi-door-closed-fill"></i>
+                        <span class="fw-bold">Ambiente: {{ ambiente }}</span>
+                    </div>
+                    <div class="d-inline-flex align-items-center gap-2 bg-primary bg-opacity-10 text-primary px-4 py-2 rounded-pill border border-primary border-opacity-25">
+                        <i class="bi bi-person-circle"></i>
+                        <span class="fw-bold">Usuario: {{ current_username }}</span>
+                    </div>
                 </div>
             </div>
 
@@ -27,16 +33,14 @@
                         <label for="instructor" class="form-label fw-bold text-secondary small text-uppercase">Instructor Responsable</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-person-vcard"></i></span>
-                            <select name="instructor" id="instructor" class="form-select border-start-0 ps-0" required>
-                                <option value="" disabled {% if not booking %}selected{% endif %}>Elija un instructor del listado...</option>
+                            <input type="text" name="instructor" id="instructor" list="instructor_list" class="form-control border-start-0 ps-0" placeholder="Escriba o elija un instructor..." value="{% if booking.instructor %}{% if booking.instructor.nombre %}{{ booking.instructor.nombre }}{% else %}{{ booking.instructor }}{% endif %}{% endif %}" required autocomplete="off">
+                            <datalist id="instructor_list">
                                 {% for inst in instructores %}
-                                    <option value="{{ inst.nombre }}" 
-                                        {% if booking.instructor.id == inst.id or booking.instructor == inst.nombre %}selected{% endif %}>
-                                        {{ inst.nombre }}
-                                    </option>
+                                    <option value="{{ inst.nombre }}" data-materia="{{ inst.materia }}">
                                 {% endfor %}
-                            </select>
+                            </datalist>
                         </div>
+                        <div class="form-text small">Si el instructor no aparece en el listado, escríbalo para registrarlo automáticamente.</div>
                     </div>
 
                     <!-- Campo: Materia o Programa -->
@@ -111,4 +115,23 @@
 </style>
 <!-- Incluimos iconos de Bootstrap para el detalle -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<script>
+    // Auto-completar la materia si el instructor seleccionado ya existe en el directorio
+    document.getElementById('instructor').addEventListener('input', function(e) {
+        const val = e.target.value.toUpperCase();
+        const list = document.getElementById('instructor_list');
+        const options = list.options;
+        
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].value === val) {
+                const materia = options[i].getAttribute('data-materia');
+                if (materia) {
+                    document.getElementById('materia').value = materia;
+                }
+                break;
+            }
+        }
+    });
+</script>
 {% endblock %}

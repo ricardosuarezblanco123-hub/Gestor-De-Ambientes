@@ -11,13 +11,65 @@
                 <h2 class="fw-bold mt-2">Mi Perfil</h2>
             </div>
 
-            <form method="POST">
+            <!-- Formulario de Información Básica -->
+            <form method="POST" class="mb-4">
                 {% csrf_token %}
-                <div class="mb-4">
-                    <label class="form-label fw-bold small text-uppercase">Nombre de usuario</label>
-                    <input type="text" class="form-control bg-light border-0 fw-bold" value="{{ user.username }}" readonly>
+                <input type="hidden" name="action" value="update_info">
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase text-muted">Nombre de usuario</label>
+                    <input type="text" name="username" class="form-control bg-light border-0 fw-bold" value="{{ user.username }}" required>
                 </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase text-muted">Correo electrónico</label>
+                    <input type="email" name="email" class="form-control bg-light border-0" value="{{ user.email|default_if_none:'' }}" placeholder="correo@ejemplo.com">
+                </div>
+
+                <button type="submit" class="btn btn-sena w-100 fw-bold shadow-sm mb-3">
+                    <i class="bi bi-person-check-fill me-2"></i>Actualizar Perfil
+                </button>
             </form>
+
+            <!-- Sección de Cambio de Contraseña -->
+            <div class="mb-4">
+                <button class="btn btn-outline-secondary w-100 btn-sm fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#changePasswordForm">
+                    <i class="bi bi-shield-lock me-2"></i>¿Cambiar contraseña?
+                </button>
+                
+                <div class="collapse mt-3" id="changePasswordForm">
+                    <div class="card card-body bg-light border-0 shadow-sm" style="border-radius: 15px;">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="change_password">
+                            
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Contraseña actual</label>
+                                <input type="password" name="old_password" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Nueva contraseña</label>
+                                <input type="password" name="new_password" class="form-control form-control-sm" required>
+                                <div class="form-text small" style="font-size: 0.7rem;">Mín. 8 caracteres, Mayúscula, Minúscula y Número.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Confirmar nueva contraseña</label>
+                                <input type="password" name="confirm_password" class="form-control form-control-sm" required>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">
+                                Confirmar Cambio
+                            </button>
+
+                            <div class="text-center mt-3">
+                                <a href="{% url 'recover_password' %}" class="text-muted small text-decoration-none">¿Olvidaste tu contraseña? <span class="text-primary fw-bold">Recupérala aquí</span></a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4">
 
             <div class="p-4 bg-light rounded-4 border-start border-success border-5 shadow-sm">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-shield-lock-fill me-2 text-success"></i>Gestión de Usuarios</h5>

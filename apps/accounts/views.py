@@ -31,6 +31,11 @@ def login_view(request):
             messages.warning(request, "Por favor, ingrese tanto el usuario como la contraseña.")
             return render(request, "login.html")
 
+        # Validación de longitud mínima en el inicio de sesión
+        if len(password_val) < 8:
+            messages.error(request, "La contraseña debe tener al menos 8 caracteres.")
+            return render(request, "login.html")
+
         # 1. Búsqueda en la tabla personalizada 'accounts_user'
         # Usamos __iexact para que no importe si el usuario escribe Admin o admin
         user_record = custom_user.objects.filter(
@@ -87,14 +92,53 @@ def profile_view(request):
     if not user_id:
         return redirect('login')
 
-    user_record = custom_user.objects.get(id=user_id)
+    user_record = get_object_or_404(custom_user, id=user_id)
     all_users = custom_user.objects.all()
 
     if request.method == "POST":
-        user_record.username = request.POST.get('username')
-        user_record.save()
-        messages.success(request, "Tu perfil ha sido actualizado correctamente.")
+        # Usamos un campo 'action' para saber qué formulario se envió
+        action = request.POST.get('action')
+
+        if action == "update_info":
+            new_username = request.POST.get('username', '').strip()
+            new_email = request.POST.get('email', '').strip()
+
+            # Validar que no existan duplicados en otros registros
+            if custom_user.objects.filter(username__iexact=new_username).exclude(id=user_id).exists():
+                messages.error(request, "El nombre de usuario ya está siendo utilizado por otra cuenta.")
+            elif new_email and custom_user.objects.filter(email__iexact=new_email).exclude(id=user_id).exists():
+                messages.error(request, "Este correo electrónico ya está registrado con otro usuario.")
+            else:
+                user_record.username = new_username
+                user_record.email = new_email
+                user_record.save()
+                messages.success(request, "Tu perfil ha sido actualizado correctamente.")
+            
+        elif action == "change_password":
+            old_password = request.POST.get('old_password')
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+
+            # Validaciones de seguridad
+            if not check_password(old_password, user_record.password):
+                messages.error(request, "La contraseña actual es incorrecta.")
+            elif new_password != confirm_password:
+                messages.error(request, "Las nuevas contraseñas no coinciden.")
+            elif len(new_password) < 8:
+                messages.error(request, "La contraseña debe tener al menos 8 caracteres.")
+            elif not any(c.isupper() for c in new_password):
+                messages.error(request, "La contraseña debe incluir al menos una letra mayúscula.")
+            elif not any(c.islower() for c in new_password):
+                messages.error(request, "La contraseña debe incluir al menos una letra minúscula.")
+            elif not any(c.isdigit() for c in new_password):
+                messages.error(request, "La contraseña debe incluir al menos un número.")
+            else:
+                user_record.password = make_password(new_password)
+                user_record.save()
+                messages.success(request, "Contraseña actualizada exitosamente.")
+
         return redirect('profile')
+
     return render(request, 'profile.html', {'user': user_record, 'all_users': all_users})
 
 # Eliminamos register_view estándar porque crea usuarios en la tabla equivocada
@@ -121,11 +165,34 @@ def custom_register_view(request):
     # Permitimos el registro sin estar logueado para que nuevos usuarios puedan unirse
 
     if request.method == "POST":
-        username_val = request.POST.get('username')
-        password_val = request.POST.get('password')
-        email_val = request.POST.get('email')
+        username_val = request.POST.get('username', '').strip()
+        password_val = request.POST.get('password', '').strip()
+        email_val = request.POST.get('email', '').strip()
 
         if username_val and password_val:
+            # Verificamos duplicados antes de proceder
+            if custom_user.objects.filter(username__iexact=username_val).exists():
+                messages.error(request, "El nombre de usuario ya se encuentra registrado.")
+                return render(request, "custom_register.html")
+            
+            if email_val and custom_user.objects.filter(email__iexact=email_val).exists():
+                messages.error(request, "Este correo electrónico ya está en uso.")
+                return render(request, "custom_register.html")
+
+            # Validación estricta de seguridad para nuevos registros
+            if len(password_val) < 8:
+                messages.error(request, "La contraseña debe tener al menos 8 caracteres.")
+                return render(request, "custom_register.html")
+            elif not any(c.isupper() for c in password_val):
+                messages.error(request, "La contraseña debe incluir al menos una letra mayúscula.")
+                return render(request, "custom_register.html")
+            elif not any(c.islower() for c in password_val):
+                messages.error(request, "La contraseña debe incluir al menos una letra minúscula.")
+                return render(request, "custom_register.html")
+            elif not any(c.isdigit() for c in password_val):
+                messages.error(request, "La contraseña debe incluir al menos un número.")
+                return render(request, "custom_register.html")
+
             # Guardamos manualmente en la tabla personalizada 'accounts_user'
             # Usamos make_password para que la clave sea segura (formato de 128 caracteres)
             new_user = custom_user.objects.create(
@@ -191,13 +258,21 @@ def reset_password_view(request, token):
         if not new_password:
             messages.error(request, "La nueva contraseña no puede estar vacía.")
             return render(request, "reset_password.html", {'token': token})
+        
+        # Validación estricta de seguridad
+        if len(new_password) < 8:
+            messages.error(request, "La contraseña debe tener al menos 8 caracteres.")
+        elif not any(c.isupper() for c in new_password):
+            messages.error(request, "Debe incluir al menos una letra mayúscula.")
+        elif not any(c.islower() for c in new_password):
+            messages.error(request, "Debe incluir al menos una letra minúscula.")
+        elif not any(c.isdigit() for c in new_password):
+            messages.error(request, "Debe incluir al menos un número.")
+        else:
+            user_record = get_object_or_404(custom_user, id=user_id)
+            user_record.password = make_password(new_password)
+            user_record.save(update_fields=['password'])
+            messages.success(request, "Contraseña actualizada exitosamente.")
+            return redirect('login')
 
-        user_record = get_object_or_404(custom_user, id=user_id)
-        # Encriptamos la nueva contraseña antes de guardarla en la base de datos
-        user_record.password = make_password(new_password)
-        # Guardamos exclusivamente el campo password para no afectar otros datos
-        user_record.save(update_fields=['password'])
-
-        messages.success(request, "Contraseña actualizada exitosamente.")
-        return redirect('login')
     return render(request, "reset_password.html", {'token': token})
