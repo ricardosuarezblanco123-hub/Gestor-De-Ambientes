@@ -45,7 +45,7 @@
                         <!-- Icono representativo y nombre del ambiente -->
                         <i class="bi bi-door-open-fill text-success fs-4 me-3"></i>
                         <div>
-                            <a href="{% url 'environment_bookings' ambiente.nombre %}" class="text-decoration-none text-dark stretched-link">
+                            <a href="{% url 'booking_list' %}?q={{ ambiente.nombre }}" class="text-decoration-none text-dark stretched-link">
                                 <h5 class="card-title fw-bold mb-0">{{ ambiente.nombre }}</h5>
                             </a>
                             <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Ambiente de formación técnica</small>

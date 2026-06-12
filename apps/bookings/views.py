@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.db.models import Q
 from .models import Reserva, Programa
 from apps.infrastructure.models import Ambiente
 from apps.directory.models import Instructor
@@ -23,10 +24,33 @@ def booking_list(request):
     if not user_id:
         return redirect('login')
 
-    # Filtramos usando el ORM de Django
-    mis_reservas = Reserva.objects.filter(user_id=user_id).select_related('ambiente', 'instructor').order_by('-fecha_inicio')
+    query = request.GET.get('q', '').strip()
+    mis_reservas = Reserva.objects.select_related('ambiente', 'instructor', 'user').order_by('-fecha_inicio')
+    
+    if query:
+        # Intentamos detectar si el usuario ingresó una fecha
+        search_date = None
+        for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+            try:
+                search_date = datetime.strptime(query, fmt).date()
+                break
+            except ValueError:
+                continue
+
+        if search_date:
+            # Si es fecha, filtramos reservas que cubran ese día específico
+            mis_reservas = mis_reservas.filter(fecha_inicio__lte=search_date, fecha_fin__gte=search_date)
+        else:
+            mis_reservas = mis_reservas.filter(
+                Q(ambiente__nombre__icontains=query) | 
+                Q(materia__icontains=query) |
+                Q(instructor__nombre__icontains=query) |
+                Q(jornada__icontains=query)
+            )
+
     context = {
         'reservations': mis_reservas,
+        'query': query,
     }
     return render(request, 'booking_list.html', context)
 
@@ -34,11 +58,33 @@ def environment_bookings(request, ambiente_name):
     if not request.session.get('user_id'):
         return redirect('login')
 
-    # Filtramos por el nombre del ambiente relacionado
-    reservas_ambiente = Reserva.objects.filter(ambiente__nombre=ambiente_name).select_related('instructor', 'ambiente')
+    query = request.GET.get('q', '').strip()
+    reservas_ambiente = Reserva.objects.filter(ambiente__nombre=ambiente_name).select_related('instructor', 'ambiente', 'user')
+    
+    if query:
+        # Intentamos detectar si el usuario ingresó una fecha
+        search_date = None
+        for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+            try:
+                search_date = datetime.strptime(query, fmt).date()
+                break
+            except ValueError:
+                continue
+
+        if search_date:
+            # Filtramos reservas que estén vigentes en la fecha consultada
+            reservas_ambiente = reservas_ambiente.filter(fecha_inicio__lte=search_date, fecha_fin__gte=search_date)
+        else:
+            reservas_ambiente = reservas_ambiente.filter(
+                Q(instructor__nombre__icontains=query) | 
+                Q(materia__icontains=query) |
+                Q(jornada__icontains=query)
+            )
+
     context = {
         'ambiente': ambiente_name,
         'reservations': reservas_ambiente,
+        'query': query,
     }
     return render(request, 'environment_bookings.html', context)
 
@@ -49,74 +95,83 @@ def reserve_view(request, ambiente_name):
     if not user_id:
         return redirect('login')
 
+    # Definimos el contexto común para evitar errores de variables faltantes
+    context = {
+        'ambiente': ambiente_name,
+        'instructores': Instructor.objects.all().order_by('nombre'),
+        'programas': Programa.objects.all().order_by('nombre'),
+        'current_username': username,
+        'booking': {},
+    }
+
     if request.method == "POST":
         instructor = request.POST.get('instructor', '').strip().upper()
         materia = request.POST.get('materia', '').strip().upper()
         inicio_raw = request.POST.get('hora_inicio', '')
         fin_raw = request.POST.get('hora_fin', '')
-        fecha_inicio = request.POST.get('fecha_inicio', '')
-        fecha_fin = request.POST.get('fecha_fin', '')
+        f_inicio_raw = request.POST.get('fecha_inicio', '')
+        f_fin_raw = request.POST.get('fecha_fin', '')
 
-        # Validación de integridad: La reserva debe tener una duración positiva
-        if not inicio_raw or not fin_raw or not fecha_inicio or not fecha_fin:
+        # Validación de integridad
+        if not instructor or not materia or not inicio_raw or not fin_raw or not f_inicio_raw or not f_fin_raw:
             messages.error(request, "Todos los campos de fecha y hora son obligatorios.")
-            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
+            context['booking'] = request.POST
+            return render(request, 'reserve_form.html', context)
 
-        # Convertimos a formato de 24 horas (militar) para comparaciones precisas
+        # Convertimos a objetos de fecha y hora para evitar errores 500
         try:
             inicio = datetime.strptime(inicio_raw, '%H:%M').time()
             fin = datetime.strptime(fin_raw, '%H:%M').time()
-        except ValueError:
-            messages.error(request, "Formato de hora inválido.")
-            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
+            d_inicio = datetime.strptime(f_inicio_raw, '%Y-%m-%d').date()
+            d_fin = datetime.strptime(f_fin_raw, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            messages.error(request, "Formato de fecha u hora inválido.")
+            context['booking'] = request.POST
+            return render(request, 'reserve_form.html', context)
 
         if inicio >= fin:
-            messages.error(request, "Error: La hora de inicio debe ser anterior a la hora de fin (Formato 24h).")
-            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
+            messages.error(request, "La hora de inicio debe ser anterior a la de fin.")
+            context['booking'] = request.POST
+            return render(request, 'reserve_form.html', context)
 
-        if fecha_inicio > fecha_fin:
-            messages.error(request, "Error: La fecha de inicio no puede ser posterior a la fecha de fin.")
-            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
+        if d_inicio > d_fin:
+            messages.error(request, "La fecha de inicio no puede ser posterior a la de fin.")
+            context['booking'] = request.POST
+            return render(request, 'reserve_form.html', context)
 
-        # Obtener o crear instructor y programa de forma independiente para alimentar las futuras listas
         instructor_obj, _ = Instructor.objects.get_or_create(nombre=instructor)
         Programa.objects.get_or_create(nombre=materia)
-        
-        # Obtener objeto ambiente
         ambiente_obj = get_object_or_404(Ambiente, nombre=ambiente_name)
 
-        # Validación de disponibilidad en la DB
-        solapada = Reserva.objects.filter(
+        conflicto = Reserva.objects.filter(
             ambiente=ambiente_obj,
-            fecha_inicio__lte=fecha_fin,
-            fecha_fin__gte=fecha_inicio,
+            fecha_inicio__lte=d_fin,
+            fecha_fin__gte=d_inicio,
             hora_inicio__lt=fin,
             hora_fin__gt=inicio
-        ).exists()
+        ).select_related('instructor').first()
 
-        if solapada:
-            print(f"DEBUG: Reserva solapada detectada para el ambiente {ambiente_name}")
-            messages.error(request, "El ambiente ya está ocupado en ese horario.")
-            return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
+        if conflicto:
+            messages.error(request, f"Ocupado: Reservado por {conflicto.instructor.nombre} del {conflicto.fecha_inicio.strftime('%d/%m/%Y')} al {conflicto.fecha_fin.strftime('%d/%m/%Y')}.")
+            context['booking'] = request.POST
+            return render(request, 'reserve_form.html', context)
 
-        # Guardar en la base de datos
         Reserva.objects.create(
             ambiente=ambiente_obj,
             instructor=instructor_obj,
             materia=materia,
             hora_inicio=inicio, # Django ORM acepta objetos time para TimeField
             hora_fin=fin,
-            fecha_inicio=fecha_inicio,
-            fecha_fin=fecha_fin,
+            fecha_inicio=d_inicio,
+            fecha_fin=d_fin,
             user_id=user_id,
             jornada=obtener_jornada(inicio_raw)
         )
         
-        print(f"DEBUG: Reserva guardada exitosamente para {instructor}")
         messages.success(request, f"Reserva exitosa para {ambiente_name} por {instructor}.")
         return redirect('booking_list')
         
-    return render(request, 'reserve_form.html', {'ambiente': ambiente_name, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
+    return render(request, 'reserve_form.html', context)
 
 def delete_booking(request, booking_id):
     # Verificación manual de sesión
@@ -161,7 +216,9 @@ def edit_booking(request, booking_id):
         try:
             inicio = datetime.strptime(inicio_raw, '%H:%M').time()
             fin = datetime.strptime(fin_raw, '%H:%M').time()
-        except ValueError:
+            d_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            d_fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
             messages.error(request, "Formato de hora inválido.")
             return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
 
@@ -169,21 +226,21 @@ def edit_booking(request, booking_id):
             messages.error(request, "Error: El horario de inicio debe ser anterior al de fin (Formato 24h).")
             return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
 
-        if fecha_inicio > fecha_fin:
+        if d_inicio > d_fin:
             messages.error(request, "Error: La fecha de inicio no puede ser posterior a la fecha de fin.")
             return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
 
         # Validación de solapamiento (excluyendo la reserva que estamos editando)
-        solapada = Reserva.objects.filter(
+        conflicto = Reserva.objects.filter(
             ambiente=reserva.ambiente,
-            fecha_inicio__lte=fecha_fin,
-            fecha_fin__gte=fecha_inicio,
+            fecha_inicio__lte=d_fin,
+            fecha_fin__gte=d_inicio,
             hora_inicio__lt=fin,
             hora_fin__gt=inicio
-        ).exclude(id=reserva.id).exists()
+        ).exclude(id=reserva.id).select_related('instructor').first()
 
-        if solapada:
-            messages.error(request, "El ambiente ya está ocupado en ese horario.")
+        if conflicto:
+            messages.error(request, f"Conflicto con la reserva de {conflicto.instructor.nombre}.")
             return render(request, 'reserve_form.html', {'ambiente': reserva.ambiente.nombre, 'booking': request.POST, 'instructores': Instructor.objects.all().order_by('nombre'), 'programas': Programa.objects.all().order_by('nombre'), 'current_username': username})
         
         # Actualizar instructor y programa de forma independiente
@@ -194,8 +251,8 @@ def edit_booking(request, booking_id):
         reserva.materia = materia_nombre
         reserva.hora_inicio = inicio
         reserva.hora_fin = fin
-        reserva.fecha_inicio = fecha_inicio
-        reserva.fecha_fin = fecha_fin
+        reserva.fecha_inicio = d_inicio
+        reserva.fecha_fin = d_fin
         reserva.jornada = obtener_jornada(inicio_raw)
         reserva.save()
 

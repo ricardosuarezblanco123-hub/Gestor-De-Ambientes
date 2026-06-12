@@ -27,15 +27,17 @@
                         <label for="instructor" class="form-label fw-bold text-secondary small text-uppercase">Instructor Responsable</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-person-vcard"></i></span>
-                            <select name="instructor" id="instructor" class="form-select border-start-0 ps-0" required>
-                                <option value="" disabled {% if not booking %}selected{% endif %}>Elija un instructor del listado...</option>
+                            <input type="text" name="instructor" id="instructor" class="form-control border-start-0 border-end-0 ps-0" 
+                                   list="instructores-list" placeholder="Escriba o elija un instructor..." 
+                                   value="{% if booking.id %}{{ booking.instructor.nombre }}{% else %}{{ booking.instructor|default:'' }}{% endif %}" required>
+                            <button class="btn btn-outline-secondary border-start-0 bg-white text-muted" type="button" onclick="document.getElementById('instructor').showPicker()" title="Ver lista">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                            <datalist id="instructores-list">
                                 {% for inst in instructores %}
-                                    <option value="{{ inst.nombre }}" 
-                                        {% if booking.instructor.id == inst.id or booking.instructor == inst.nombre %}selected{% endif %}>
-                                        {{ inst.nombre }}
-                                    </option>
+                                    <option value="{{ inst.nombre }}">
                                 {% endfor %}
-                            </select>
+                            </datalist>
                         </div>
                     </div>
 
@@ -44,7 +46,7 @@
                         <label for="materia" class="form-label fw-bold text-secondary small text-uppercase">Materia o Programa</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0 text-success"><i class="bi bi-journal-bookmark"></i></span>
-                            <input type="text" name="materia" id="materia" class="form-control border-start-0 ps-0" placeholder="Ej: Análisis y Desarrollo de Software" value="{% if booking.materia %}{{ booking.materia }}{% elif booking.instructor.materia %}{{ booking.instructor.materia }}{% endif %}" required>
+                            <input type="text" name="materia" id="materia" class="form-control border-start-0 ps-0" placeholder="Ej: Análisis y Desarrollo de Software" value="{{ booking.materia|default:'' }}" required>
                         </div>
                     </div>
 
@@ -53,21 +55,21 @@
                 <!-- Campos: Fecha de Inicio y Fin -->
                     <div class="col-md-6">
                         <label for="fecha_inicio" class="form-label fw-bold text-secondary small text-uppercase">Fecha Inicio</label>
-                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ booking.fecha_inicio|date:'Y-m-d' }}" required>
+                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{% if booking.id %}{{ booking.fecha_inicio|date:'Y-m-d' }}{% else %}{{ booking.fecha_inicio|default:'' }}{% endif %}" required>
                     </div>
                     <div class="col-md-6">
                         <label for="fecha_fin" class="form-label fw-bold text-secondary small text-uppercase">Fecha Fin</label>
-                        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ booking.fecha_fin|date:'Y-m-d' }}" required>
+                        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{% if booking.id %}{{ booking.fecha_fin|date:'Y-m-d' }}{% else %}{{ booking.fecha_fin|default:'' }}{% endif %}" required>
                     </div>
 
                 <!-- Campos: Horario de Inicio y Fin -->
                     <div class="col-md-6">
                         <label for="hora_inicio" class="form-label fw-bold text-secondary small text-uppercase">Hora de Inicio</label>
-                        <input type="time" name="hora_inicio" id="hora_inicio" class="form-control" value="{{ booking.hora_inicio|default_if_none:'' }}" required>
+                        <input type="time" name="hora_inicio" id="hora_inicio" class="form-control" value="{% if booking.id %}{{ booking.hora_inicio|time:'H:i' }}{% else %}{{ booking.hora_inicio|default:'' }}{% endif %}" required>
                     </div>
                     <div class="col-md-6">
                         <label for="hora_fin" class="form-label fw-bold text-secondary small text-uppercase">Hora de Fin</label>
-                        <input type="time" name="hora_fin" id="hora_fin" class="form-control" value="{{ booking.hora_fin|default_if_none:'' }}" required>
+                        <input type="time" name="hora_fin" id="hora_fin" class="form-control" value="{% if booking.id %}{{ booking.hora_fin|time:'H:i' }}{% else %}{{ booking.hora_fin|default:'' }}{% endif %}" required>
                     </div>
                 </div>
 
@@ -100,6 +102,15 @@
     }
     .form-control.border-start-0, .form-select.border-start-0 {
         border-radius: 0 12px 12px 0;
+    }
+    /* Ajuste para el input con botón al final */
+    .form-control.border-start-0.border-end-0 {
+        border-radius: 0;
+    }
+    /* Estilo para el botón de la flecha */
+    .input-group .btn-outline-secondary {
+        border-radius: 0 12px 12px 0;
+        border-color: #e0e0e0;
     }
     .card {
         animation: fadeInUp 0.6s ease-out;
