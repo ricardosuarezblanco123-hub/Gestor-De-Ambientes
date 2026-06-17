@@ -34,8 +34,13 @@ def add_environment(request, sede_slug):
     if request.method == "POST":
         sede = get_object_or_404(Sede, slug=sede_slug)
         nombre = request.POST.get('nombre_ambiente').upper()
+        inventario = request.POST.get('inventario', '')
         if nombre:
-            Ambiente.objects.get_or_create(nombre=nombre, sede=sede)
+            Ambiente.objects.get_or_create(
+                nombre=nombre, 
+                sede=sede, 
+                defaults={'inventario': inventario}
+            )
             messages.success(request, f"Ambiente '{nombre}' agregado exitosamente.")
     return redirect('environment_detail', sede_slug=sede_slug)
 
@@ -59,8 +64,10 @@ def edit_environment(request, sede_slug, ambiente_name):
         sede = get_object_or_404(Sede, slug=sede_slug)
         ambiente = get_object_or_404(Ambiente, nombre=ambiente_name, sede=sede)
         nuevo_nombre = request.POST.get('nuevo_nombre').upper()
+        inventario = request.POST.get('inventario', '')
         if nuevo_nombre:
             ambiente.nombre = nuevo_nombre
+            ambiente.inventario = inventario
             ambiente.save()
             messages.success(request, f"Ambiente '{ambiente_name}' actualizado a '{nuevo_nombre}'.")
     return redirect('environment_detail', sede_slug=sede_slug)

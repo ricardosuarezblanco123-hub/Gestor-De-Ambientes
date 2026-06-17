@@ -44,7 +44,11 @@ def poblar():
             print(f"Sede creada: {nombre}")
         
         for amb_name in info['ambientes']:
-            ambiente, amb_created = Ambiente.objects.get_or_create(nombre=amb_name, sede=sede)
+            ambiente, amb_created = Ambiente.objects.get_or_create(
+                nombre=amb_name, 
+                sede=sede,
+                defaults={'inventario': 'Inventario inicial pendiente por registrar.'}
+            )
             if amb_created:
                 print(f"  - Ambiente creado: {amb_name}")
 

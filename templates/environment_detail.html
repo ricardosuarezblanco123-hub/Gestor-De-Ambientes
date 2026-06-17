@@ -24,10 +24,15 @@
 
     <!-- Formulario rápido para agregar nuevo ambiente -->
     <div class="card border-0 shadow-sm p-3 mb-4" style="border-radius: 12px;">
-        <form action="{% url 'add_environment' sede_slug %}" method="POST" class="d-flex gap-2">
+        <form action="{% url 'add_environment' sede_slug %}" method="POST" class="row g-2">
             {% csrf_token %}
-            <input type="text" name="nombre_ambiente" class="form-control" placeholder="Nombre del nuevo ambiente (Ej: AMBIENTE 301)" required>
-            <button type="submit" class="btn btn-sena fw-bold text-nowrap d-flex align-items-center gap-2">
+            <div class="col-md-5">
+                <input type="text" name="nombre_ambiente" class="form-control" placeholder="Nombre del nuevo ambiente (Ej: AMBIENTE 301)" required>
+            </div>
+            <div class="col-md-5">
+                <input type="text" name="inventario" class="form-control" placeholder="Inventario inicial (opcional)">
+            </div>
+            <button type="submit" class="btn btn-sena fw-bold text-nowrap d-flex align-items-center gap-2 col-md-2">
                 <i class="bi bi-plus-circle"></i>
                 Agregar Ambiente
             </button>
@@ -48,7 +53,14 @@
                             <a href="{% url 'booking_list' %}?q={{ ambiente.nombre }}" class="text-decoration-none text-dark stretched-link">
                                 <h5 class="card-title fw-bold mb-0">{{ ambiente.nombre }}</h5>
                             </a>
-                            <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Ambiente de formación técnica</small>
+                            <div class="d-flex flex-column">
+                                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Ambiente de formación técnica</small>
+                                {% if ambiente.inventario %}
+                                <small class="text-success mt-1"><i class="bi bi-box-seam me-1"></i><strong>Inventario:</strong> {{ ambiente.inventario|truncatechars:100 }}</small>
+                                {% else %}
+                                <small class="text-warning mt-1"><i class="bi bi-exclamation-triangle me-1"></i>Sin inventario registrado</small>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     <!-- Botón de acción alineado a la derecha -->
@@ -85,6 +97,10 @@
                         <div class="modal-body text-start">
                             <label class="form-label fw-semibold">Nuevo nombre del ambiente</label>
                             <input type="text" name="nuevo_nombre" class="form-control" value="{{ ambiente.nombre }}" required>
+                            
+                            <label class="form-label fw-semibold mt-3">Descripción del Inventario</label>
+                            <textarea name="inventario" class="form-control" rows="4" 
+                                placeholder="Lista de elementos (PC, Sillas, VideoBeam, etc.)">{{ ambiente.inventario }}</textarea>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
