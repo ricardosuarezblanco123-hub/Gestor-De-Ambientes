@@ -87,9 +87,8 @@
                             {% endif %}
                         </div>
                         {% if u.id != request.session.user_id %}
-                        <a href="{% url 'delete_user' u.id %}" class="btn btn-sm btn-outline-danger border-0" onclick="return confirm('¿Estás seguro de eliminar este perfil?');">
-                            <i class="bi bi-trash"></i>
-                        </a>
+                        <!-- El enlace ahora lleva a la página de confirmación, sin el onclick de JavaScript -->
+                        <a href="{% url 'delete_user' u.id %}" class="btn btn-sm btn-outline-danger border-0" title="Eliminar perfil"><i class="bi bi-trash"></i></a>
                         {% endif %}
                     </div>
                     {% endfor %}

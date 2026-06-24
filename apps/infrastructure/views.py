@@ -106,3 +106,20 @@ def edit_sede(request, sede_slug):
         sede.save()
         messages.success(request, "Información de la sede actualizada.")
     return redirect('environment_list')
+
+# Vista para eliminar una sede
+def delete_sede(request, sede_slug):
+    if not request.session.get('user_id'):
+        return redirect('login')
+
+    sede = get_object_or_404(Sede, slug=sede_slug)
+    
+    # Si el método es POST, significa que el usuario confirmó la eliminación
+    if request.method == 'POST':
+        nombre_sede = sede.nombre
+        sede.delete()
+        messages.success(request, f'La sede "{nombre_sede}" y todos sus ambientes han sido eliminados.')
+        return redirect('environment_list')
+
+    # Si el método es GET, muestra la página de confirmación
+    return render(request, 'confirmar_eliminacion_sede.html', {'sede': sede})

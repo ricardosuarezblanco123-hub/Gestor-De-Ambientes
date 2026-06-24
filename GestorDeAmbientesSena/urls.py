@@ -19,7 +19,7 @@ from django.urls import path
 from apps.accounts.views import login_view, logout_view, profile_view, custom_register_view, delete_user, recover_password_view, reset_password_view # Importa las vistas de cuentas
 from apps.bookings.views import booking_list, reserve_view, delete_booking, edit_booking, environment_bookings # Importa las vistas de reservas
 from apps.directory.views import directory_list
-from apps.infrastructure.views import environment_list, environment_detail, add_environment, delete_environment, edit_environment, add_sede, edit_sede
+from apps.infrastructure.views import environment_list, environment_detail, add_environment, delete_environment, edit_environment, add_sede, edit_sede, delete_sede
 # Definición de las rutas (URLs) de todo el sitio web
 urlpatterns = [
     # Ruta principal (vacía): Ahora redirigimos a la lista de sedes para mejor flujo
@@ -52,4 +52,5 @@ urlpatterns = [
     path('environments/<str:sede_slug>/edit/<str:ambiente_name>/', edit_environment, name='edit_environment'), # Ruta para editar
     path('sedes/add/', add_sede, name='add_sede'), # Nueva ruta para agregar sede
     path('sedes/edit/<str:sede_slug>/', edit_sede, name='edit_sede'), # Nueva ruta para editar sede
+    path('sedes/delete/<str:sede_slug>/', delete_sede, name='delete_sede'), # Nueva ruta para eliminar sede
 ]
